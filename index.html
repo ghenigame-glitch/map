@@ -123,8 +123,9 @@
                 color: 'white',
                 weight: 1,
                 fillColor: getColor(city.strategy),
-                fillOpacity: 0.8,
-                radius: Math.max(6, Math.sqrt(city.pop) / 60) 
+                fillOpacity: city.strategy === 'Standard Metro' ? 0.4 : 0.8, // Fade out the boring ones
+                // Much tighter scaling: Min 4px, Max 15px
+                radius: Math.max(4, Math.min(15, Math.sqrt(city.pop) / 150))
             }).addTo(map);
 
             // Clean Popup
