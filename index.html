@@ -103,7 +103,16 @@
         <div class="legend-item"><span class="swatch" style="background:#16a34a"></span>Walkable</div>
         <div class="legend-item"><span class="swatch" style="background:#ca8a04"></span>University</div>
     </div>
-    <div style="margin-top:10px; font-size:10px; color:#999; text-align:center;">v6.0 (Aggressive Yield Algorithm)</div>
+    <div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
+        <div style="font-size:11px; font-weight:bold; color:#333; margin-bottom:4px;">Algorithm Breakdown (The "P-Index"):</div>
+        <ul style="margin:0; padding-left:15px; font-size:10px; color:#666; line-height:1.4;">
+            <li><b>50% Ratio:</b> Raw statistical availability.</li>
+            <li><b>40% Demographics:</b> Weighted for target preference.</li>
+            <li><b>+5-8 Bonus:</b> Applied to Large/Mega cities (Volume).</li>
+            <li><b>-15 Penalty:</b> "University Hubs" (Frat/Student Risk).</li>
+        </ul>
+    </div>
+    <div style="margin-top:10px; font-size:10px; color:#999; text-align:center;">v6.1 (Algorithm Exposed)</div>
 </div>
 
 <div id="map"></div>
