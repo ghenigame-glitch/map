@@ -271,7 +271,30 @@
         const tbody = document.getElementById('leaderboardBody');
         tbody.innerHTML = '';
         
-        let sorted = [...cityData].sort((a, b) => {
+        // Get current filter values
+        const catFilter = document.getElementById('catFilter').value;
+        const popMin = parseInt(document.getElementById('popSlider').value);
+        const whiteMin = parseFloat(document.getElementById('whiteSlider').value);
+        const ratioMin = parseFloat(document.getElementById('ratioSlider').value);
+        const walkMin = parseFloat(document.getElementById('walkSlider').value);
+        const tempMin = parseInt(document.getElementById('tempSlider').value);
+        const scoreMin = parseInt(document.getElementById('scoreSlider').value);
+        const obeseMax = parseInt(document.getElementById('obeseSlider').value);
+        
+        // Filter cities based on current settings
+        let filtered = cityData.filter(city => {
+            if (catFilter !== 'All' && city.strategy !== catFilter) return false;
+            if (city.pop < popMin) return false;
+            if (city.white_density < whiteMin) return false;
+            if (city.ratio < ratioMin) return false;
+            if (city.walkability < walkMin) return false;
+            if (city.feb_temp < tempMin) return false;
+            if (city.score < scoreMin) return false;
+            if (city.obesity > obeseMax) return false;
+            return true;
+        });
+        
+        let sorted = filtered.sort((a, b) => {
             let valA = a[currentSort.key];
             let valB = b[currentSort.key];
             
@@ -305,6 +328,9 @@
             `;
             tbody.appendChild(tr);
         });
+        
+        // Update count display
+        document.querySelector('#leaderboardModal h2').innerHTML = `🏆 Opportunity Leaderboard (${sorted.length} cities)`;
     }
     
     // Comparison Logic
