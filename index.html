@@ -518,6 +518,18 @@
         const tempMin = parseInt(document.getElementById('tempSlider').value);
         const scoreMin = parseInt(document.getElementById('scoreSlider').value);
         const obeseMax = parseInt(document.getElementById('obeseSlider').value);
+        const useSingle = document.getElementById('singleToggle').checked;
+        
+        // Helper to calculate dynamic score
+        function getDynamicScore(city) {
+            const ratio = useSingle ? city.single_ratio : city.ratio;
+            const vol = useSingle ? city.single_w : city.target_pop;
+            if (!ratio || vol <= 0) return 0;
+            const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
+            const ratioFactor = Math.pow(ratio / 0.95, 2);
+            let score = Math.round(volumeFactor * ratioFactor * 50);
+            return Math.max(0, Math.min(100, score));
+        }
 
         document.getElementById('popVal').innerText = (popMin / 1000) + 'k+';
         document.getElementById('targetPopVal').innerText = (targetPopMin / 1000) + 'k+';
@@ -529,14 +541,19 @@
         document.getElementById('obeseVal').innerText = '<' + obeseMax + '%';
 
         cityData.forEach(city => {
+            // Use dynamic values based on single toggle
+            const targetPop = useSingle ? city.single_w : city.target_pop;
+            const ratio = useSingle ? city.single_ratio : city.ratio;
+            const dynScore = getDynamicScore(city);
+            
             if (catFilter !== 'All' && city.strategy !== catFilter) return;
             if (city.pop < popMin) return;
-            if (city.target_pop < targetPopMin) return;
+            if (targetPop < targetPopMin) return;
             if (city.white_density < whiteMin) return;
-            if (city.ratio < ratioMin) return;
+            if (ratio < ratioMin) return;
             if (city.walkability < walkMin) return;
             if (city.feb_temp < tempMin) return;
-            if (city.score < scoreMin) return;
+            if (dynScore < scoreMin) return;
             if (city.obesity > obeseMax) return;
 
             const circle = L.circleMarker([city.lat, city.lon], {
@@ -547,21 +564,20 @@
                 radius: Math.max(4, Math.min(15, Math.sqrt(city.pop) / 150))
             }).addTo(map);
             
-            // Get display values based on toggle
-            const useSingle = document.getElementById('singleToggle').checked;
-            const displayRatio = useSingle ? city.single_ratio : city.ratio;
-            const displayTargetPop = useSingle ? city.single_w : city.target_pop;
+            // Get display values based on toggle (using already computed values)
+            const displayRatio = ratio;
+            const displayTargetPop = targetPop;
             const ratioLabel = useSingle ? 'Single Ratio' : 'Ratio';
             const targetLabel = useSingle ? '🎯 Single Women' : '🎯 Target Pop';
             
-            // Hover Tooltip
-            circle.bindTooltip(`<b>${city.short_name}</b><br>Score: ${city.score} | ${ratioLabel}: ${displayRatio}`, {permanent: false, direction: 'top'});
+            // Hover Tooltip - use dynScore instead of city.score
+            circle.bindTooltip(`<b>${city.short_name}</b><br>Score: ${dynScore} | ${ratioLabel}: ${displayRatio}`, {permanent: false, direction: 'top'});
 
             const popupContent = `
                 <div style="font-family:sans-serif; min-width:180px;">
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <h4 style="margin:0; color:#111;">${city.short_name}</h4>
-                        <span class="score-badge" style="background:${getScoreColor(city.score)}; color:white;">${city.score}</span>
+                        <span class="score-badge" style="background:${getScoreColor(dynScore)}; color:white;">${dynScore}</span>
                     </div>
                     <div style="font-size:11px; font-weight:600; color:#555; margin-bottom:8px;">${city.strategy}</div>
                     ${useSingle ? '<div style="background:#fef3c7; padding:2px 6px; border-radius:4px; font-size:10px; color:#92400e; margin-bottom:6px;">📊 Single Data Mode</div>' : ''}
