@@ -133,8 +133,9 @@
     </div>
 
     <div class="filter-group">
-        <label>Min White Density % <span id="whiteVal" class="val-display">0%</span></label>
+        <label>Min Target Demographic % <span id="whiteVal" class="val-display">0%</span></label>
         <input type="range" id="whiteSlider" min="0" max="7" step="0.5" value="0" oninput="updateMap()">
+        <div style="font-size:9px; color:#666; margin-top:2px;">(Pct of Crowd that is Target Age/Race)</div>
     </div>
 
     <div class="filter-group">
@@ -171,7 +172,7 @@
             <li><b>Removed:</b> Values, Demographics, Weather (Use filters to apply these).</li>
         </ul>
     </div>
-    <div style="margin-top:10px; font-size:10px; color:#999; text-align:center;">v12.0 (Obesity Awareness)</div>
+    <div style="margin-top:10px; font-size:10px; color:#999; text-align:center;">v12.1 (Metric Clarity)</div>
 </div>
 
 <!-- Leaderboard Modal -->
@@ -356,7 +357,7 @@
             ${row("Ratio (F:M)", me.ratio, me.ratio, getCls(me.ratio, op.ratio, true))}
             ${row("Values / Low Exp", me.strategy.includes("Religious") ? "High" : "Avg", me.strategy, "")}
             ${row("Frat Risk", me.frat_risk, me.frat_risk, me.frat_risk.includes("Low") || me.frat_risk.includes("None") ? "vs-winner" : "vs-loser")}
-            ${row("White Density", me.white_density, me.white_density+"%", getCls(me.white_density, op.white_density, true))}
+            ${row("Target Demo %", me.white_density, me.white_density+"%", getCls(me.white_density, op.white_density, true))}
             ${row("Obesity (18-24)", me.obesity, me.obesity+"%", getCls(me.obesity, op.obesity, false))}
             ${row("Rent", me.rent, "$"+me.rent, getCls(me.rent, op.rent, false))}
             ${row("Temp (Feb)", me.feb_temp, me.feb_temp+"°F", getCls(me.feb_temp, op.feb_temp, true))}
@@ -454,7 +455,7 @@
                         <b>🎯 Target Pop:</b> ${(city.target_pop/1000).toFixed(1)}k<br>
                         <b>Total Pop:</b> ${(city.pop/1000).toFixed(0)}k<br>
                         <b>Ratio:</b> ${city.ratio} (F:M)<br>
-                        <b>White Density:</b> ${city.white_density}%<br>
+                        <b>Target Demo %:</b> ${city.white_density}%<br>
                         <b>Obesity (18-24):</b> ${city.obesity}%<br>
                         <b>Feb Avg High:</b> ${city.feb_temp}°F<br>
                     </div>
