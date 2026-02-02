@@ -317,7 +317,8 @@
             if (city.pop < popMin) return false;
             const targetPop = useSingle ? city.single_w : city.target_pop;
             if (targetPop < targetPopMin) return false;
-            if (city.white_density < whiteMin) return false;
+            // Skip white_density filter in Single mode (uses All Races data)
+            if (!useSingle && city.white_density < whiteMin) return false;
             const ratio = useSingle ? city.single_ratio : city.ratio;
             if (ratio < ratioMin) return false;
             if (city.walkability < walkMin) return false;
