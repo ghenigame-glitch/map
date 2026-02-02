@@ -187,14 +187,14 @@
         <div class="legend-item"><span class="swatch" style="background:#ca8a04"></span>University</div>
     </div>
     <div style="margin-top:10px; padding-top:10px; border-top:1px solid #eee;">
-        <div style="font-size:11px; font-weight:bold; color:#333; margin-bottom:4px;">Algorithm v16.0 (Effective Opportunity):</div>
+        <div style="font-size:11px; font-weight:bold; color:#333; margin-bottom:4px;">Algorithm v17.0 (Global Edition):</div>
         <ul style="margin:0; padding-left:15px; font-size:10px; color:#666; line-height:1.4;">
             <li><b>Volume:</b> log(Target Pop) - diminishing returns</li>
             <li><b>Ratio²:</b> Squared to penalize bad competition</li>
             <li><b>Formula:</b> Volume × Ratio² × 50</li>
         </ul>
     </div>
-    <div style="margin-top:10px; font-size:10px; color:#999; text-align:center;">v16.0 (Effective Opportunity)</div>
+    <div style="margin-top:10px; font-size:10px; color:#999; text-align:center;">v17.0 (Global Edition)</div>
 </div>
 
 <!-- Top 5 Best Bets Panel -->
@@ -208,7 +208,7 @@
   <div class="modal-content">
     <span class="close-btn" onclick="closeLeaderboard()" style="font-size:24px;">&times;</span>
     <h2 style="margin-top:0;">🏆 Opportunity Leaderboard</h2>
-    <p style="font-size:12px; color:#666;">Sorted by Effective Opportunity (v16.0: Volume × Ratio²)</p>
+    <p style="font-size:12px; color:#666;">Sorted by Global Opportunity (v17.0: Adjusted Ratio²)</p>
     <div class="table-container">
         <table id="scoreTable">
             <thead>
@@ -371,7 +371,7 @@
             const displayTargetPop = useSingle ? city.single_w : city.target_pop;
             
             // Calculate dynamic score based on current mode
-            // Formula v16.0: log(Volume) × (Ratio/0.95)² × 50
+            // Formula v17.0: log(Volume) × (Adjusted Ratio/0.95)² × 50
             const volume = displayTargetPop > 0 ? displayTargetPop : 1000;
             const ratioFactor = Math.pow(displayRatio / 0.95, 2);
             const volumeFactor = Math.log10(Math.max(1000, volume)) - 3;
