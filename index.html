@@ -246,6 +246,7 @@
                     <th onclick="toggleSort('score')">Score</th>
                     <th onclick="toggleSort('target_pop')">Target Pop</th>
                     <th onclick="toggleSort('ratio')">Ratio</th>
+                    <th onclick="toggleSort('white_density')">White %</th>
                     <th onclick="toggleSort('value_score')">Value</th>
                     <th onclick="toggleSort('rent')">Rent</th>
                     <th onclick="toggleSort('obesity')">Obesity %</th>
@@ -457,6 +458,7 @@
                 <td><span class="score-badge" style="background:${getScoreColor(dynamicScore)}">${dynamicScore}</span></td>
                 <td>${(displayTargetPop/1000).toFixed(1)}k</td>
                 <td>${displayRatio}</td>
+                <td>${city.white_density}%</td>
                 <td style="color:${city.value_score >= 8 ? 'green' : '#333'}">${city.value_score || 'N/A'}</td>
                 <td>$${city.rent}</td>
                 <td>${city.obesity}%</td>
