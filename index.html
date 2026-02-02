@@ -120,7 +120,35 @@
         </label>
         <div style="font-size:10px; color:#92400e; margin-top:4px;">
             Default: White women 18-24 vs White men 18-32<br>
-            Checked: Never-married (all races) 18-24 vs 18-34
+        </div>
+    </div>
+
+    <div class="filter-group" style="background: #ecfdf5; padding: 10px; border-radius: 8px; border: 1px solid #6ee7b7;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="usOnlyToggle" onchange="updateMap()" style="width:18px; height:18px;">
+            <span style="font-weight:bold; color:#065f46;">🇺🇸 United States Only</span>
+        </label>
+        <div style="font-size:10px; color:#065f46; margin-top:4px;">
+        </div>
+    </div>
+
+    <div class="filter-group" style="background: #fef2f2; padding: 10px; border-radius: 8px; border: 1px solid #fca5a5;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="mogToggle" onchange="updateMap()" style="width:18px; height:18px;">
+            <span style="font-weight:bold; color:#b91c1c;">💪 MOG Mode (Competition Crusher)</span>
+        </label>
+        <div style="font-size:10px; color:#b91c1c; margin-top:4px;">
+            Uses Ratio⁴ instead of Ratio² - brutally punishes bad odds
+        </div>
+    </div>
+
+    <div class="filter-group" style="background: #f3e8ff; padding: 10px; border-radius: 8px; border: 1px solid #c084fc;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="researchToggle" onchange="updateMap()" style="width:18px; height:18px;">
+            <span style="font-weight:bold; color:#7c3aed;">🔬 Research Mode (Multi-Factor)</span>
+        </label>
+        <div style="font-size:10px; color:#7c3aed; margin-top:4px;">
+            Volume^0.3 × Ratio × Walk × Fitness × Affordability
         </div>
     </div>
 
@@ -160,8 +188,8 @@
     </div>
 
     <div class="filter-group">
-        <label>Min Ratio (F:M) <span id="ratioVal" class="val-display">0.4</span></label>
-        <input type="range" id="ratioSlider" min="0.4" max="1.1" step="0.05" value="0.4" oninput="updateMap()">
+        <label>Min Ratio (F:M) <span id="ratioVal" class="val-display">0.15</span>+</label>
+        <input type="range" id="ratioSlider" min="0.15" max="1.1" step="0.05" value="0.15" oninput="updateMap()">
     </div>
     
     <div class="filter-group">
@@ -218,7 +246,6 @@
                     <th onclick="toggleSort('score')">Score</th>
                     <th onclick="toggleSort('target_pop')">Target Pop</th>
                     <th onclick="toggleSort('ratio')">Ratio</th>
-                    <th onclick="toggleSort('comp_index')">Comp. Index</th>
                     <th onclick="toggleSort('value_score')">Value</th>
                     <th onclick="toggleSort('rent')">Rent</th>
                     <th onclick="toggleSort('obesity')">Obesity %</th>
@@ -299,20 +326,52 @@
         const scoreMin = parseInt(document.getElementById('scoreSlider').value);
         const obeseMax = parseInt(document.getElementById('obeseSlider').value);
         const useSingle = document.getElementById('singleToggle').checked;
+        const usOnly = document.getElementById('usOnlyToggle').checked;
+        const mogMode = document.getElementById('mogToggle').checked;
+        const researchMode = document.getElementById('researchToggle').checked;
+        
+        // Helper to check if city is in the US
+        function isUSCity(cityName) {
+            const usStates = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'];
+            const parts = cityName.split(', ');
+            if (parts.length >= 2) {
+                return usStates.includes(parts[parts.length - 1].trim());
+            }
+            return false;
+        }
         
         // Helper to calculate dynamic score
         function getDynamicScore(city) {
             const ratio = useSingle ? city.single_ratio : city.ratio;
             const vol = useSingle ? city.single_w : city.target_pop;
             if (!ratio || vol <= 0) return 0;
-            const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
-            const ratioFactor = Math.pow(ratio / 0.95, 2);
-            let score = Math.round(volumeFactor * ratioFactor * 50);
-            return Math.max(0, Math.min(100, score));
+            
+            if (researchMode) {
+                // Research Mode: Multi-factor formula
+                // Score = Volume^0.3 × Ratio^power × (Walk/100) × ((100-Obesity)/100) × (1000/Rent)
+                const volumeFactor = Math.pow(vol, 0.3);  // Heavy diminishing returns
+                const ratioPower = mogMode ? 3 : 1.5;     // Adjusted for research mode
+                const ratioFactor = Math.pow(ratio, ratioPower);
+                const walkFactor = 0.5 + (city.walkability || 2) / 100;  // 0.5-1.5 range (bonus, not crusher)
+                const fitnessFactor = (100 - (city.obesity || 20)) / 100;
+                const affordFactor = 1000 / Math.max(500, city.rent || 1000);
+                
+                // Normalize to 0-100 range (calibrated for typical values)
+                let score = volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8;
+                return Math.max(0, Math.min(100, Math.round(score)));
+            } else {
+                // Standard Mode: Original formula
+                const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
+                const ratioPower = mogMode ? 4 : 2;
+                const ratioFactor = Math.pow(ratio / 0.95, ratioPower);
+                let score = Math.round(volumeFactor * ratioFactor * 50);
+                return Math.max(0, Math.min(100, score));
+            }
         }
         
         // Filter cities based on current settings
         let filtered = cityData.filter(city => {
+            if (usOnly && !isUSCity(city.short_name)) return false; // US-Only filter
             if (catFilter !== 'All' && city.strategy !== catFilter) return false;
             if (city.pop < popMin) return false;
             const targetPop = useSingle ? city.single_w : city.target_pop;
@@ -372,11 +431,23 @@
             const displayTargetPop = useSingle ? city.single_w : city.target_pop;
             
             // Calculate dynamic score based on current mode
-            // Formula v17.0: log(Volume) × (Adjusted Ratio/0.95)² × 50
             const volume = displayTargetPop > 0 ? displayTargetPop : 1000;
-            const ratioFactor = Math.pow(displayRatio / 0.95, 2);
-            const volumeFactor = Math.log10(Math.max(1000, volume)) - 3;
-            let dynamicScore = Math.round(volumeFactor * ratioFactor * 50);
+            let dynamicScore;
+            
+            if (researchMode) {
+                const volumeFactor = Math.pow(volume, 0.3);
+                const ratioPower = mogMode ? 3 : 1.5;
+                const ratioFactor = Math.pow(displayRatio, ratioPower);
+                const walkFactor = 0.5 + (city.walkability || 2) / 100;  // 0.5-1.5 range
+                const fitnessFactor = (100 - (city.obesity || 20)) / 100;
+                const affordFactor = 1000 / Math.max(500, city.rent || 1000);
+                dynamicScore = Math.round(volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8);
+            } else {
+                const ratioPower = mogMode ? 4 : 2;
+                const ratioFactor = Math.pow(displayRatio / 0.95, ratioPower);
+                const volumeFactor = Math.log10(Math.max(1000, volume)) - 3;
+                dynamicScore = Math.round(volumeFactor * ratioFactor * 50);
+            }
             dynamicScore = Math.max(0, Math.min(100, dynamicScore));
             
             const tr = document.createElement('tr');
@@ -386,7 +457,6 @@
                 <td><span class="score-badge" style="background:${getScoreColor(dynamicScore)}">${dynamicScore}</span></td>
                 <td>${(displayTargetPop/1000).toFixed(1)}k</td>
                 <td>${displayRatio}</td>
-                <td style="color:${city.comp_index >= 1.0 ? 'green' : 'orange'}">${city.comp_index || 'N/A'}</td>
                 <td style="color:${city.value_score >= 8 ? 'green' : '#333'}">${city.value_score || 'N/A'}</td>
                 <td>$${city.rent}</td>
                 <td>${city.obesity}%</td>
@@ -460,7 +530,6 @@
             </div>
             ${row("Target Pop", me.target_pop, (me.target_pop/1000).toFixed(1)+"k", getCls(me.target_pop, op.target_pop, true))}
             ${row("Ratio (F:M)", me.ratio, me.ratio, getCls(me.ratio, op.ratio, true))}
-            ${row("Comp. Index", me.comp_index, me.comp_index || 'N/A', getCls(me.comp_index, op.comp_index, true))}
             ${row("Value Score", me.value_score, me.value_score || 'N/A', getCls(me.value_score, op.value_score, true))}
             ${row("Rent", me.rent, "$"+me.rent, getCls(me.rent, op.rent, false))}
             ${row("Obesity (18-24)", me.obesity, me.obesity+"%", getCls(me.obesity, op.obesity, false))}
@@ -520,16 +589,45 @@
         const scoreMin = parseInt(document.getElementById('scoreSlider').value);
         const obeseMax = parseInt(document.getElementById('obeseSlider').value);
         const useSingle = document.getElementById('singleToggle').checked;
+        const usOnly = document.getElementById('usOnlyToggle').checked;
+        const mogMode = document.getElementById('mogToggle').checked;
+        const researchMode = document.getElementById('researchToggle').checked;
+        
+        // Helper to check if city is in the US (ends with state abbreviation)
+        function isUSCity(cityName) {
+            const usStates = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY','DC'];
+            const parts = cityName.split(', ');
+            if (parts.length >= 2) {
+                const stateCode = parts[parts.length - 1].trim();
+                return usStates.includes(stateCode);
+            }
+            return false;
+        }
         
         // Helper to calculate dynamic score
         function getDynamicScore(city) {
             const ratio = useSingle ? city.single_ratio : city.ratio;
             const vol = useSingle ? city.single_w : city.target_pop;
             if (!ratio || vol <= 0) return 0;
-            const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
-            const ratioFactor = Math.pow(ratio / 0.95, 2);
-            let score = Math.round(volumeFactor * ratioFactor * 50);
-            return Math.max(0, Math.min(100, score));
+            
+            if (researchMode) {
+                // Research Mode: Multi-factor formula
+                const volumeFactor = Math.pow(vol, 0.3);
+                const ratioPower = mogMode ? 3 : 1.5;
+                const ratioFactor = Math.pow(ratio, ratioPower);
+                const walkFactor = 0.5 + (city.walkability || 2) / 100;  // 0.5-1.5 range
+                const fitnessFactor = (100 - (city.obesity || 20)) / 100;
+                const affordFactor = 1000 / Math.max(500, city.rent || 1000);
+                let score = volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8;
+                return Math.max(0, Math.min(100, Math.round(score)));
+            } else {
+                // Standard Mode
+                const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
+                const ratioPower = mogMode ? 4 : 2;
+                const ratioFactor = Math.pow(ratio / 0.95, ratioPower);
+                let score = Math.round(volumeFactor * ratioFactor * 50);
+                return Math.max(0, Math.min(100, score));
+            }
         }
 
         document.getElementById('popVal').innerText = (popMin / 1000) + 'k+';
@@ -548,6 +646,7 @@
             const dynScore = getDynamicScore(city);
             
             if (catFilter !== 'All' && city.strategy !== catFilter) return;
+            if (usOnly && !isUSCity(city.short_name)) return; // US-Only filter
             if (city.pop < popMin) return;
             if (targetPop < targetPopMin) return;
             if (city.white_density < whiteMin && !useSingle) return; // Skip white filter in single mode (all races)
@@ -586,7 +685,6 @@
                         <b>${targetLabel}:</b> ${(displayTargetPop/1000).toFixed(1)}k<br>
                         <b>Total Pop:</b> ${(city.pop/1000).toFixed(0)}k<br>
                         <b>${ratioLabel}:</b> ${displayRatio} (F:M)<br>
-                        <b>Comp. Index:</b> <span style="color:${city.comp_index >= 1.0 ? 'green' : 'orange'}">${city.comp_index || 'N/A'}</span><br>
                         <b>Value Score:</b> <span style="color:${city.value_score >= 8 ? 'green' : '#333'}">${city.value_score || 'N/A'}</span><br>
                         <hr style="margin:5px 0; border:0; border-top:1px dashed #ddd;">
                         <b>Rent:</b> $${city.rent}/mo<br>
@@ -619,17 +717,49 @@
     
     function updateBestBets() {
         const panel = document.getElementById('bestBetsList');
+        const useSingle = document.getElementById('singleToggle').checked;
+        const mogMode = document.getElementById('mogToggle').checked;
+        const researchMode = document.getElementById('researchToggle').checked;
+        
+        // Dynamic score calculation matching the main algorithm
+        function getDynScore(city) {
+            const ratio = useSingle ? city.single_ratio : city.ratio;
+            const vol = useSingle ? city.single_w : city.target_pop;
+            if (!ratio || vol <= 0) return 0;
+            
+            if (researchMode) {
+                const volumeFactor = Math.pow(vol, 0.3);
+                const ratioPower = mogMode ? 3 : 1.5;
+                const ratioFactor = Math.pow(ratio, ratioPower);
+                const walkFactor = 0.5 + (city.walkability || 2) / 100;  // 0.5-1.5 range
+                const fitnessFactor = (100 - (city.obesity || 20)) / 100;
+                const affordFactor = 1000 / Math.max(500, city.rent || 1000);
+                let score = volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8;
+                return Math.max(0, Math.min(100, Math.round(score)));
+            } else {
+                const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
+                const ratioPower = mogMode ? 4 : 2;
+                const ratioFactor = Math.pow(ratio / 0.95, ratioPower);
+                let score = Math.round(volumeFactor * ratioFactor * 50);
+                return Math.max(0, Math.min(100, score));
+            }
+        }
+        
         // Get currently visible cities (matching filters)
         const visible = markers.map(m => {
             const ll = m.getLatLng();
             return cityData.find(c => c.lat === ll.lat && c.lon === ll.lng);
         }).filter(Boolean);
         
-        const top5 = visible.sort((a, b) => b.score - a.score).slice(0, 5);
+        // Sort by dynamic score and take top 5
+        const top5 = visible
+            .map(c => ({...c, dynScore: getDynScore(c)}))
+            .sort((a, b) => b.dynScore - a.dynScore)
+            .slice(0, 5);
         
         panel.innerHTML = top5.map((c, i) => `
             <div style="padding:3px 0; border-bottom:1px solid #eee; cursor:pointer;" onclick="map.setView([${c.lat}, ${c.lon}], 10)">
-                <b>#${i+1}</b> ${c.short_name} <span style="color:${getScoreColor(c.score)}">(${c.score})</span>
+                <b>#${i+1}</b> ${c.short_name} <span style="color:${getScoreColor(c.dynScore)}">(${c.dynScore})</span>
             </div>
         `).join('');
     }
