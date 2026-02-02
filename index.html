@@ -179,13 +179,14 @@
         <table id="scoreTable">
             <thead>
                 <tr>
-                    <th>Rank</th>
-                    <th>City</th>
-                    <th>Score</th>
-                    <th>Target Pop</th>
-                    <th>Ratio</th>
-                    <th>Frat Risk</th>
-                    <th>Category</th>
+                    <th onclick="toggleSort('score')">Rank</th>
+                    <th onclick="toggleSort('short_name')">City</th>
+                    <th onclick="toggleSort('score')">Score</th>
+                    <th onclick="toggleSort('target_pop')">Target Pop</th>
+                    <th onclick="toggleSort('ratio')">Ratio</th>
+                    <th onclick="toggleSort('frat_risk')">Frat Risk</th>
+                    <th onclick="toggleSort('rent')">Rent</th>
+                    <th onclick="toggleSort('strategy')">Category</th>
                 </tr>
             </thead>
             <tbody id="leaderboardBody"></tbody>
@@ -225,27 +226,48 @@
         maxZoom: 20
     }).addTo(map);
 
-    let markers = [];
-
-    function toggleControls() {
-        const controls = document.getElementById('controls');
-        const showBtn = document.getElementById('show-controls');
-        if (controls.style.display === 'none') {
-            controls.style.display = 'block';
-            showBtn.style.display = 'none';
-        } else {
-            controls.style.display = 'none';
-            showBtn.style.display = 'block';
-        }
-    }
+    let currentSort = { key: 'score', desc: true };
 
     function openLeaderboard() {
-        const modal = document.getElementById('leaderboardModal');
+        document.getElementById('leaderboardModal').style.display = 'block';
+        renderLeaderboard();
+    }
+
+    function closeLeaderboard() { document.getElementById('leaderboardModal').style.display = 'none'; }
+    
+    function toggleSort(key) {
+        if (currentSort.key === key) {
+            currentSort.desc = !currentSort.desc;
+        } else {
+            currentSort.key = key;
+            currentSort.desc = true; // Default to High->Low for new keys usually
+            // Exception for Rent/Frat: Low is better usually, but let's stick to standard DESC first click
+            if (key === 'rent' || key === 'frat_risk') currentSort.desc = false;
+        }
+        renderLeaderboard();
+    }
+    
+    function renderLeaderboard() {
         const tbody = document.getElementById('leaderboardBody');
         tbody.innerHTML = '';
         
-        // Sort data by score desc
-        const sorted = [...cityData].sort((a, b) => b.score - a.score);
+        let sorted = [...cityData].sort((a, b) => {
+            let valA = a[currentSort.key];
+            let valB = b[currentSort.key];
+            
+            if (typeof valA === 'string') {
+                return currentSort.desc ? valB.localeCompare(valA) : valA.localeCompare(valB);
+            }
+            return currentSort.desc ? valB - valA : valA - valB;
+        });
+        
+        // Update Header Arrows (visual cue)
+        document.querySelectorAll('th').forEach(th => {
+            th.innerHTML = th.innerHTML.replace(' ▼', '').replace(' ▲', '');
+            if (th.getAttribute('onclick') && th.getAttribute('onclick').includes(currentSort.key)) {
+                th.innerHTML += currentSort.desc ? ' ▼' : ' ▲';
+            }
+        });
         
         sorted.forEach((city, index) => {
             const tr = document.createElement('tr');
@@ -256,16 +278,12 @@
                 <td>${(city.target_pop/1000).toFixed(1)}k</td>
                 <td>${city.ratio}</td>
                 <td style="color:${city.frat_risk.includes('High') ? 'red' : 'green'}">${city.frat_risk}</td>
+                <td>$${city.rent}</td>
                 <td>${city.strategy}</td>
             `;
             tbody.appendChild(tr);
         });
-        
-        modal.display = 'block'; // Direct style set might fail if using class
-        modal.style.display = 'block';
     }
-
-    function closeLeaderboard() { document.getElementById('leaderboardModal').style.display = 'none'; }
     
     // Comparison Logic
     function openCompare() {
@@ -345,6 +363,20 @@
         if (event.target == m2) m2.style.display = "none";
     }
 
+    let markers = [];
+
+    function toggleControls() {
+        const controls = document.getElementById('controls');
+        const showBtn = document.getElementById('show-controls');
+        if (controls.style.display === 'none') {
+            controls.style.display = 'block';
+            showBtn.style.display = 'none';
+        } else {
+            controls.style.display = 'none';
+            showBtn.style.display = 'block';
+        }
+    }
+    
     function getColor(cat) {
         if (cat === 'Religiously Affiliated') return '#dc2626';
         if (cat === 'High Density (Secular)') return '#2563eb';
