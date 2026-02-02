@@ -298,22 +298,56 @@
         const tempMin = parseInt(document.getElementById('tempSlider').value);
         const scoreMin = parseInt(document.getElementById('scoreSlider').value);
         const obeseMax = parseInt(document.getElementById('obeseSlider').value);
+        const useSingle = document.getElementById('singleToggle').checked;
+        
+        // Helper to calculate dynamic score
+        function getDynamicScore(city) {
+            const ratio = useSingle ? city.single_ratio : city.ratio;
+            const vol = useSingle ? city.single_w : city.target_pop;
+            if (!ratio || vol <= 0) return 0;
+            const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
+            const ratioFactor = Math.pow(ratio / 0.95, 2);
+            let score = Math.round(volumeFactor * ratioFactor * 50);
+            return Math.max(0, Math.min(100, score));
+        }
         
         // Filter cities based on current settings
         let filtered = cityData.filter(city => {
             if (catFilter !== 'All' && city.strategy !== catFilter) return false;
             if (city.pop < popMin) return false;
-            if (city.target_pop < targetPopMin) return false;
+            const targetPop = useSingle ? city.single_w : city.target_pop;
+            if (targetPop < targetPopMin) return false;
             if (city.white_density < whiteMin) return false;
-            if (city.ratio < ratioMin) return false;
+            const ratio = useSingle ? city.single_ratio : city.ratio;
+            if (ratio < ratioMin) return false;
             if (city.walkability < walkMin) return false;
             if (city.feb_temp < tempMin) return false;
-            if (city.score < scoreMin) return false;
+            const dynScore = getDynamicScore(city);
+            if (dynScore < scoreMin) return false;
             if (city.obesity > obeseMax) return false;
             return true;
         });
         
         let sorted = filtered.sort((a, b) => {
+            // Special handling for score - use dynamic calculation
+            if (currentSort.key === 'score') {
+                const scoreA = getDynamicScore(a);
+                const scoreB = getDynamicScore(b);
+                return currentSort.desc ? scoreB - scoreA : scoreA - scoreB;
+            }
+            // Special handling for ratio - use selected data
+            if (currentSort.key === 'ratio') {
+                const ratioA = useSingle ? a.single_ratio : a.ratio;
+                const ratioB = useSingle ? b.single_ratio : b.ratio;
+                return currentSort.desc ? ratioB - ratioA : ratioA - ratioB;
+            }
+            // Special handling for target_pop
+            if (currentSort.key === 'target_pop') {
+                const popA = useSingle ? a.single_w : a.target_pop;
+                const popB = useSingle ? b.single_w : b.target_pop;
+                return currentSort.desc ? popB - popA : popA - popB;
+            }
+            
             let valA = a[currentSort.key];
             let valB = b[currentSort.key];
             
@@ -336,11 +370,19 @@
             const displayRatio = useSingle ? city.single_ratio : city.ratio;
             const displayTargetPop = useSingle ? city.single_w : city.target_pop;
             
+            // Calculate dynamic score based on current mode
+            // Formula v16.0: log(Volume) × (Ratio/0.95)² × 50
+            const volume = displayTargetPop > 0 ? displayTargetPop : 1000;
+            const ratioFactor = Math.pow(displayRatio / 0.95, 2);
+            const volumeFactor = Math.log10(Math.max(1000, volume)) - 3;
+            let dynamicScore = Math.round(volumeFactor * ratioFactor * 50);
+            dynamicScore = Math.max(0, Math.min(100, dynamicScore));
+            
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td>#${index + 1}</td>
                 <td><b>${city.short_name}</b></td>
-                <td><span class="score-badge" style="background:${getScoreColor(city.score)}">${city.score}</span></td>
+                <td><span class="score-badge" style="background:${getScoreColor(dynamicScore)}">${dynamicScore}</span></td>
                 <td>${(displayTargetPop/1000).toFixed(1)}k</td>
                 <td>${displayRatio}</td>
                 <td style="color:${city.comp_index >= 1.0 ? 'green' : 'orange'}">${city.comp_index || 'N/A'}</td>
