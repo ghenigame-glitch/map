@@ -359,7 +359,7 @@
                 
                 // Normalize to 0-100 range (calibrated for typical values)
                 let score = volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8;
-                return Math.max(0, Math.min(100, Math.round(score)));
+                return Math.max(0, Math.min(100, parseFloat(score.toFixed(2))));
             } else {
                 // Standard Mode: Original formula
                 const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
@@ -442,12 +442,12 @@
                 const walkFactor = 0.5 + (city.walkability || 2) / 100;  // 0.5-1.5 range
                 const fitnessFactor = (100 - (city.obesity || 20)) / 100;
                 const affordFactor = 1000 / Math.max(500, city.rent || 1000);
-                dynamicScore = Math.round(volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8);
+                dynamicScore = parseFloat((volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8).toFixed(2));
             } else {
                 const ratioPower = mogMode ? 4 : 2;
                 const ratioFactor = Math.pow(displayRatio / 0.95, ratioPower);
                 const volumeFactor = Math.log10(Math.max(1000, volume)) - 3;
-                dynamicScore = Math.round(volumeFactor * ratioFactor * 50);
+                dynamicScore = parseFloat((volumeFactor * ratioFactor * 50).toFixed(2));
             }
             dynamicScore = Math.max(0, Math.min(100, dynamicScore));
             
@@ -455,7 +455,7 @@
             tr.innerHTML = `
                 <td>#${index + 1}</td>
                 <td><b>${city.short_name}</b></td>
-                <td><span class="score-badge" style="background:${getScoreColor(dynamicScore)}">${dynamicScore}</span></td>
+                <td><span class="score-badge" style="background:${getScoreColor(dynamicScore)}">${dynamicScore} (${displayRatio})</span></td>
                 <td>${(displayTargetPop/1000).toFixed(1)}k</td>
                 <td>${displayRatio}</td>
                 <td>${city.white_density}%</td>
@@ -621,7 +621,7 @@
                 const fitnessFactor = (100 - (city.obesity || 20)) / 100;
                 const affordFactor = 1000 / Math.max(500, city.rent || 1000);
                 let score = volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8;
-                return Math.max(0, Math.min(100, Math.round(score)));
+                return Math.max(0, Math.min(100, parseFloat(score.toFixed(2))));
             } else {
                 // Standard Mode
                 const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
@@ -737,7 +737,7 @@
                 const fitnessFactor = (100 - (city.obesity || 20)) / 100;
                 const affordFactor = 1000 / Math.max(500, city.rent || 1000);
                 let score = volumeFactor * ratioFactor * walkFactor * fitnessFactor * affordFactor * 8;
-                return Math.max(0, Math.min(100, Math.round(score)));
+                return Math.max(0, Math.min(100, parseFloat(score.toFixed(2))));
             } else {
                 const volumeFactor = Math.log10(Math.max(1000, vol)) - 3;
                 const ratioPower = mogMode ? 4 : 2;
