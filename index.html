@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Trad Wife Town Finder</title>
+  <title>Single Town Finder</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -299,8 +299,8 @@
   <div id="map"></div>
 
   <aside class="panel" aria-live="polite">
-    <h1 class="title">Trad Wife Town Finder</h1>
-    <p class="subtitle">Ranked primarily by Single Men / Women ratio (lowest competition), multiplied by Trad Wife factors (High Fertility & White Demographics).</p>
+    <h1 class="title">Single Town Finder</h1>
+    <p class="subtitle">Ranked primarily by Single Men / Women ratio (lowest competition) and pool sustainability.</p>
     <button id="masterBtn" class="master-btn" type="button">Find Highest-Odds Towns</button>
     <div class="slider-group">
       <div class="slider-label">
@@ -656,8 +656,6 @@
           <div><b>Target pool:</b> ${formatCount(city.target_pop)}</div>
           <div><b>Metro pop:</b> ${formatPop(city.pop)}</div>
           <div><b>Rent:</b> $${formatCount(city.rent)}</div>
-          <div><b>White Density/Stat:</b> ${toNumber(city.white_density).toFixed(1)}</div>
-          <div><b>Fertility:</b> ${toNumber(city.fertility).toFixed(1)}</div>
           <div><b>Risk/Strategy:</b> ${city.frat_risk} / ${city.strategy}</div>
         </div>
       `;
@@ -723,24 +721,14 @@
       const rentMin = refRent.length ? Math.min(...refRent) : 0;
       const rentMax = refRent.length ? Math.max(...refRent) : 1;
 
-      const refWhite = referencePrepared.map(item => toNumber(item.city.white_density)).filter(v => Number.isFinite(v));
-      const whiteMin = refWhite.length ? Math.min(...refWhite) : 0;
-      const whiteMax = refWhite.length ? Math.max(...refWhite) : 1;
-
-      const refFertility = referencePrepared.map(item => toNumber(item.city.fertility)).filter(v => Number.isFinite(v));
-      const fertMin = refFertility.length ? Math.min(...refFertility) : 0;
-      const fertMax = refFertility.length ? Math.max(...refFertility) : 1;
-
       function normScore(val, min, max, invert) {
           if (!Number.isFinite(val) || max <= min) return 0.5;
           let s = invert ? (max - val) / (max - min) : (val - min) / (max - min);
           return Math.max(0.01, Math.min(1, s)) * 0.99 + 0.01; 
       }
 
-      // Hardcoded Trad Wife Priorities based on user request
+      // Hardcoded Priorities based on user request
       const rentWeight = 0.3; // Slight preference for affordability
-      const whiteWeight = 1.0; // High focus on demographics
-      const fertWeight = 1.0; // High focus on fertility
 
       if (compStats.spread <= 1e-9) {
         clearRankingResults();
@@ -761,18 +749,12 @@
           const floorPenalty = poolFloorPenalty(targetPop);
 
           const cRent = toNumber(item.city.rent);
-          const cWhite = toNumber(item.city.white_density);
-          const cFert = toNumber(item.city.fertility);
 
           const rS = normScore(cRent, rentMin, rentMax, true); 
-          const wS = normScore(cWhite, whiteMin, whiteMax, false);
-          const fS = normScore(cFert, fertMin, fertMax, false);
 
           const rentMult = Math.pow(rS, rentWeight * 2); 
-          const whiteMult = Math.pow(wS, whiteWeight * 2);
-          const fertMult = Math.pow(fS, fertWeight * 2);
 
-          const extraMultiplier = rentMult * whiteMult * fertMult;
+          const extraMultiplier = rentMult;
 
           const finalScore = Math.pow(compScore, COMP_WEIGHT)
             * Math.pow(sustScore, SUST_WEIGHT)
@@ -831,7 +813,7 @@
 
       winnerCard.innerHTML = `
         <div class="winner-row">
-          <div class="winner-city">Top Trad Wife Pick: ${escapeHtml(winner.city.short_name)}</div>
+          <div class="winner-city">Top Pick: ${escapeHtml(winner.city.short_name)}</div>
           <div class="score-pill">${winner.score.toFixed(1)} / 100</div>
         </div>
         <div class="metric-grid">
@@ -842,7 +824,6 @@
           <div>Monthly burn rate</div><b>${winner.burnRate.toFixed(1)}% of pool/month</b>
           <div>Target pool size</div><b>${formatCount(winner.city.target_pop)}</b>
           <div>Rent / Walkability</div><b>$${formatCount(winner.city.rent)} / ${formatCount(winner.city.walkability)}</b>
-          <div>White Dens / Fertility</div><b>${toNumber(winner.city.white_density).toFixed(1)} / ${toNumber(winner.city.fertility).toFixed(1)}</b>
           <div>Risk / Strat</div><b>${winner.city.frat_risk} / ${winner.city.strategy}</b>
           <div>Comp score / Sust score</div><b>${winner.compScore.toFixed(0)} / ${winner.sustScore.toFixed(0)}</b>
         </div>
@@ -861,7 +842,7 @@
               <div class="town-score">${item.score.toFixed(1)}</div>
             </div>
             <div class="town-metrics">
-              Comp ${Number.isFinite(men100) ? men100.toFixed(1) + "m/100w" : "N/A"} · Rent $${formatCount(city.rent)} · White ${toNumber(city.white_density).toFixed(1)} · Fert ${toNumber(city.fertility).toFixed(1)}<br>
+              Comp ${Number.isFinite(men100) ? men100.toFixed(1) + "m/100w" : "N/A"} · Rent $${formatCount(city.rent)}<br>
               ${item.months.toFixed(0)}mo game (${item.burnRate.toFixed(1)}%/mo) · Strat: ${city.strategy ? city.strategy.split(' ')[0] : 'None'}
             </div>
           </div>
@@ -869,7 +850,7 @@
       }).join("");
 
       topListCard.innerHTML = `
-        <h2 class="top-list-title">Top 10 Towns for Trad Wife ROI (${sizeFocusLabel}, Pool >= ${formatPop(minTargetPop)})</h2>
+        <h2 class="top-list-title">Top 10 Towns (${sizeFocusLabel}, Pool >= ${formatPop(minTargetPop)})</h2>
         <div class="method-note" style="margin-top:0; margin-bottom:8px;">Ranked by competition x sustainability. Click a row to zoom and open map details.</div>
         ${topRows}
       `;
