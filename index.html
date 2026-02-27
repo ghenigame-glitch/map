@@ -300,7 +300,7 @@
 
   <aside class="panel" aria-live="polite">
     <h1 class="title">Single Town Finder</h1>
-    <p class="subtitle">Ranked primarily by Single Men / Women ratio (lowest competition) and pool sustainability.</p>
+    <p class="subtitle">Ranked strictly by Single Men / Women ratio (lowest competition).</p>
     <button id="masterBtn" class="master-btn" type="button">Find Highest-Odds Towns</button>
     <div class="slider-group">
       <div class="slider-label">
@@ -343,7 +343,7 @@
       <div class="slider-help">Removes highly Mormon areas like Provo, Logan, etc.</div>
     </div>
 
-    <div class="slider-group">
+    <div class="slider-group" style="display: none;">
       <div class="slider-label">
         <span>Approaches per Day</span>
         <span id="approachRateVal">8</span>
@@ -365,7 +365,7 @@
 
     const COMP_WEIGHT = 1.4;
     const SUST_WEIGHT = 1.0;
-    const SIGMOID_STEEPNESS = 6;
+    const SIGMOID_STEEPNESS = 10;
     const SUST_MIDPOINT_MONTHS = 18;
     const SUST_STEEPNESS = 0.25;
     const POOL_FLOOR = 3000;
@@ -479,7 +479,7 @@
       const checks = [
         toNumber(city.single_w) > 0,
         toNumber(city.single_m) > 0,
-        toNumber(city.target_pop) > 0
+        toNumber(city.single_w_18_24) > 0
       ];
       const validCount = checks.filter(Boolean).length;
       return validCount / checks.length;
@@ -503,9 +503,10 @@
     }
 
     function metricValues(city) {
+      const singleRatio = city.single_ratio;
       return {
-        competition: menPer100TargetWomen(city),
-        targetPop: toNumber(city.target_pop)
+        competition: singleRatio,
+        targetPop: toNumber(city.single_w_18_24)
       };
     }
 
@@ -533,23 +534,7 @@
       return Math.round(n).toLocaleString();
     }
 
-    function menPer100Women(city) {
-      const women = toNumber(city.single_w);
-      const men = toNumber(city.single_m);
-      if (!Number.isFinite(women) || !Number.isFinite(men) || women <= 0) {
-        return NaN;
-      }
-      return (men / women) * 100;
-    }
 
-    function menPer100TargetWomen(city) {
-      const targetWomen = toNumber(city.target_pop);
-      const men = toNumber(city.single_m);
-      if (!Number.isFinite(targetWomen) || !Number.isFinite(men) || targetWomen <= 0) {
-        return NaN;
-      }
-      return (men / targetWomen) * 100;
-    }
 
     function getMinTargetPopThreshold() {
       const n = parseInt(minTargetPopSlider.value, 10);
@@ -596,7 +581,7 @@
 
     function initMinTargetPopSlider() {
       const values = getRegionCities()
-        .map((city) => toNumber(city.target_pop))
+        .map((city) => toNumber(city.single_w_18_24))
         .filter((value) => Number.isFinite(value) && value > 0);
 
       const maxObserved = values.length ? Math.max(...values) : 100000;
@@ -639,24 +624,15 @@
 
     function buildPopup(city, info) {
       const rankText = info ? `#${info.rank} | Score ${info.score.toFixed(1)}` : "Not ranked yet";
-      const men100Target = menPer100TargetWomen(city);
-      const men100AllSingleWomen = menPer100Women(city);
-      const sustLine = info
-        ? `<div><b>Months of game:</b> ${info.months.toFixed(1)}mo · ${info.burnRate.toFixed(1)}%/mo burn</div>`
-        : "";
+      const singleRatio = city.single_ratio;
       return `
         <div>
           <div style="font-weight:700; margin-bottom:4px;">${escapeHtml(city.short_name)}</div>
           <div style="font-size:11px; color:#0f172a; margin-bottom:6px;">${rankText}</div>
-          <div><b>Target competition:</b> ${Number.isFinite(men100Target) ? men100Target.toFixed(1) + " men / 100 target women" : "N/A"}</div>
-          <div><b>All-single competition:</b> ${Number.isFinite(men100AllSingleWomen) ? men100AllSingleWomen.toFixed(1) + " men / 100 single women" : "N/A"}</div>
-          ${sustLine}
-          <div><b>Single ratio:</b> ${formatRatio(city.single_ratio)}</div>
-          <div><b>Single women:</b> ${formatCount(city.single_w)}</div>
-          <div><b>Target pool:</b> ${formatCount(city.target_pop)}</div>
-          <div><b>Metro pop:</b> ${formatPop(city.pop)}</div>
-          <div><b>Rent:</b> $${formatCount(city.rent)}</div>
-          <div><b>Risk/Strategy:</b> ${city.frat_risk} / ${city.strategy}</div>
+          <div style="font-size:11px; line-height:1.4;">
+            <div><b>Target pool (Single W 18-24):</b> ${formatPop(city.single_w_18_24)}</div>
+            <div><b>Competition:</b> ${Number.isFinite(singleRatio) ? singleRatio.toFixed(2) : "N/A"} Single Men (18-32) per Single Woman</div>
+          </div>
         </div>
       `;
     }
@@ -697,11 +673,11 @@
       const referenceCities = getRegionCities().filter((city) => (
         toNumber(city.single_w) > 0
         && toNumber(city.single_m) > 0
-        && toNumber(city.target_pop) > 0
+        && toNumber(city.single_w_18_24) > 0
       ));
 
       const usCities = referenceCities.filter((city) => (
-        toNumber(city.target_pop) >= minTargetPop
+        toNumber(city.single_w_18_24) >= minTargetPop
         && cityMatchesSizeFocus(city)
       ));
 
@@ -717,18 +693,6 @@
 
       const compStats = buildStat(referencePrepared.map((item) => item.metrics.competition));
 
-      const refRent = referencePrepared.map(item => toNumber(item.city.rent)).filter(v => Number.isFinite(v));
-      const rentMin = refRent.length ? Math.min(...refRent) : 0;
-      const rentMax = refRent.length ? Math.max(...refRent) : 1;
-
-      function normScore(val, min, max, invert) {
-          if (!Number.isFinite(val) || max <= min) return 0.5;
-          let s = invert ? (max - val) / (max - min) : (val - min) / (max - min);
-          return Math.max(0.01, Math.min(1, s)) * 0.99 + 0.01; 
-      }
-
-      // Hardcoded Priorities based on user request
-      const rentWeight = 0.3; // Slight preference for affordability
 
       if (compStats.spread <= 1e-9) {
         clearRankingResults();
@@ -745,24 +709,9 @@
           const compScore = Number.isFinite(comp)
             ? sigmoidCompetitionScore(comp, compStats.median, compStats.spread)
             : 0;
-          const sustScore = sustainabilityScore(targetPop, approachRate);
-          const floorPenalty = poolFloorPenalty(targetPop);
+            
+          const finalScore = compScore;
 
-          const cRent = toNumber(item.city.rent);
-
-          const rS = normScore(cRent, rentMin, rentMax, true); 
-
-          const rentMult = Math.pow(rS, rentWeight * 2); 
-
-          const extraMultiplier = rentMult;
-
-          const finalScore = Math.pow(compScore, COMP_WEIGHT)
-            * Math.pow(sustScore, SUST_WEIGHT)
-            * floorPenalty
-            * extraMultiplier;
-
-          const months = monthsOfGame(targetPop, approachRate);
-          const burnRate = monthlyBurnRate(targetPop, approachRate);
           const reliability = reliabilityForCity(item.city);
           const score = Math.max(0, Math.min(100, finalScore * 100));
 
@@ -771,10 +720,6 @@
             metrics: item.metrics,
             score: round1(score),
             compScore: round1(compScore * 100),
-            sustScore: round1(sustScore * 100),
-            floorPenalty: round1(floorPenalty * 100),
-            months: round1(months),
-            burnRate: round1(burnRate),
             reliability: round1(reliability * 100)
           };
         })
@@ -783,9 +728,7 @@
       scoreByCity = new Map(ranking.map((item, index) => [item.city.short_name, {
         rank: index + 1,
         score: item.score,
-        reliability: item.reliability,
-        months: item.months,
-        burnRate: item.burnRate
+        reliability: item.reliability
       }]));
 
       updateMarkersWithRanking();
@@ -817,23 +760,17 @@
           <div class="score-pill">${winner.score.toFixed(1)} / 100</div>
         </div>
         <div class="metric-grid">
-          <div>Target competition</div><b>${Number.isFinite(winnerMen100) ? winnerMen100.toFixed(1) + " men / 100 target women" : "N/A"} (${competitionDelta >= 0 ? "+" : ""}${competitionDelta.toFixed(1)} vs U.S. median)</b>
-          <div>All-single competition</div><b>${(() => { const r = menPer100Women(winner.city); return Number.isFinite(r) ? r.toFixed(1) + " men / 100 single women" : "N/A"; })()}</b>
-          <div>Single women:men ratio</div><b>${formatRatio(winner.city.single_ratio)}</b>
-          <div>Months of game</div><b>${winner.months.toFixed(1)} months at ${approachRate}/day</b>
-          <div>Monthly burn rate</div><b>${winner.burnRate.toFixed(1)}% of pool/month</b>
-          <div>Target pool size</div><b>${formatCount(winner.city.target_pop)}</b>
-          <div>Rent / Walkability</div><b>$${formatCount(winner.city.rent)} / ${formatCount(winner.city.walkability)}</b>
+          <div>Competition Ratio</div><b>${Number.isFinite(winnerMen100) ? winnerMen100.toFixed(2) + " Single Men (18-32) per Single Woman (18-24)" : "N/A"} (${competitionDelta >= 0 ? "+" : ""}${competitionDelta.toFixed(2)} vs U.S. median)</b>
+          <div>Target pool size</div><b>${formatCount(winner.city.single_w_18_24)}</b>
           <div>Risk / Strat</div><b>${winner.city.frat_risk} / ${winner.city.strategy}</b>
-          <div>Comp score / Sust score</div><b>${winner.compScore.toFixed(0)} / ${winner.sustScore.toFixed(0)}</b>
         </div>
-        <div class="method-note">Multiplicative score: cities must score well on BOTH competition and sustainability. Competition uses sigmoid scaling (diminishing returns at extremes). Sustainability measures months of active game at your approach rate. Pools under ${formatCount(POOL_FLOOR)} get an additional penalty.</div>
+        <div class="method-note">Linear score: cities are ranked strictly on their competition ratio via sigmoid scaling. Use the slider to filter out towns that are too small.</div>
       `;
       winnerCard.classList.add("show");
 
       const topRows = sorted.slice(0, 10).map((item, index) => {
         const city = item.city;
-        const men100 = item.metrics.competition;
+        const ratio = item.metrics.competition;
 
         return `
           <div class="town-row" data-city="${escapeHtml(city.short_name)}">
@@ -842,8 +779,8 @@
               <div class="town-score">${item.score.toFixed(1)}</div>
             </div>
             <div class="town-metrics">
-              Comp ${Number.isFinite(men100) ? men100.toFixed(1) + "m/100w" : "N/A"} · Rent $${formatCount(city.rent)}<br>
-              ${item.months.toFixed(0)}mo game (${item.burnRate.toFixed(1)}%/mo) · Strat: ${city.strategy ? city.strategy.split(' ')[0] : 'None'}
+              Ratio ${Number.isFinite(ratio) ? ratio.toFixed(2) + " Single Men/Woman" : "N/A"} &middot; Target Pool: ${formatPop(city.single_w_18_24)}<br>
+              Strat: ${city.strategy ? city.strategy.split(' ')[0] : 'None'}
             </div>
           </div>
         `;
@@ -851,7 +788,7 @@
 
       topListCard.innerHTML = `
         <h2 class="top-list-title">Top 10 Towns (${sizeFocusLabel}, Pool >= ${formatPop(minTargetPop)})</h2>
-        <div class="method-note" style="margin-top:0; margin-bottom:8px;">Ranked by competition x sustainability. Click a row to zoom and open map details.</div>
+        <div class="method-note" style="margin-top:0; margin-bottom:8px;">Ranked strictly by competition odds. Click a row to zoom and open map details.</div>
         ${topRows}
       `;
       topListCard.classList.add("show");
